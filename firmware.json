@@ -1,0 +1,22 @@
+{
+  "series": "es",
+  "product": [
+    {
+      "model": "es-net",
+      "name": "ES-net",
+      "update": "2025-11-01",
+      "versions": [
+        {
+          "version": "25w44c",
+          "url": ""
+        }
+      ]
+    },
+    {
+      "model": "es-pro",
+      "name": "ES-Pro",
+      "update": "2025-11-01",
+      "versions": []
+    }
+  ]
+}
