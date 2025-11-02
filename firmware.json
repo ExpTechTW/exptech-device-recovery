@@ -8,9 +8,7 @@
       "versions": [
         {
           "version": "25w44c",
-          "bootloader": "1.0",
-          "partitions": "1.0",
-          "url": "https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware/es/es-net/25w44c.bin"
+          "url": "firmware/es/es-net/25w44c.bin"
         }
       ]
     },
