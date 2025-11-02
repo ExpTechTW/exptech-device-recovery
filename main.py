@@ -102,10 +102,6 @@ def select_version(product):
 
         if choice.isdigit() and 1 <= int(choice) <= len(versions):
             selected_version = versions[int(choice) - 1]
-            url = selected_version.get('url', '')
-            if not url:
-                print("❌ 此版本沒有有效的 URL。")
-                sys.exit(1)
             return selected_version
         print("   輸入無效，請重新輸入。")
 
