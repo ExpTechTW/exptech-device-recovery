@@ -238,9 +238,10 @@ def run_flash_tool():
     print("✅ 請選擇操作模式：")
     print("   [1] 使用 firmware.json 中的固件燒錄（默認）")
     print("   [2] 使用 test.bin 燒錄")
-    print("   [3] 完全清除 ESP32 flash 記憶體")
+    print("   [3] 指定本地 bin 檔案")
+    print("   [4] 完全清除 ESP32 flash 記憶體")
 
-    source_choice = input("   請選擇（1-3，按 Enter 使用默認）：").strip()
+    source_choice = input("   請選擇（1-4，按 Enter 使用默認）：").strip()
     if not source_choice:
         source_choice = '1'
 
@@ -258,7 +259,7 @@ def run_flash_tool():
         print("   輸入無效，請重新輸入。")
 
     # 如果選擇清除模式，執行清除並退出
-    if source_choice == '3':
+    if source_choice == '4':
         erase_esp32(port)
         return
 
@@ -278,6 +279,30 @@ def run_flash_tool():
                 if file_path and os.path.exists(file_path):
                     bin_path = file_path
                     break
+                print("   檔案不存在，請重新輸入。")
+    elif source_choice == '3':
+        # 指定本地 bin 檔案
+        print("\n📁 請指定本地 bin 檔案：")
+        while True:
+            file_path = input("   請輸入 bin 檔案的完整路徑（或相對路徑）：").strip()
+            if file_path.lower() == 'exit':
+                sys.exit(0)
+            if not file_path:
+                print("   路徑不能為空。")
+                continue
+
+            # 處理相對路徑
+            if not os.path.isabs(file_path):
+                file_path = os.path.abspath(file_path)
+
+            if os.path.exists(file_path):
+                if file_path.lower().endswith('.bin'):
+                    bin_path = file_path
+                    print(f"\n✅ 找到檔案：{bin_path}")
+                    break
+                else:
+                    print("   檔案必須是 .bin 格式。")
+            else:
                 print("   檔案不存在，請重新輸入。")
     else:
         firmware_data = load_firmware_json()
