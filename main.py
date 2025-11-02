@@ -8,7 +8,7 @@ import serial.tools.list_ports
 from esptool import main as esptool_main
 
 CHIP_TYPE = 'esp32'
-BAUD_RATE = 460800
+BAUD_RATE = 921600
 APP_ADDRESS = '0x0'
 FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 BASE_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main'
