@@ -3,13 +3,14 @@ import glob
 import json
 import os
 import urllib.request
+import urllib.error
 import serial.tools.list_ports
 from esptool import main as esptool_main
 
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 460800
 APP_ADDRESS = '0x10000'
-FIRMWARE_JSON_PATH = 'firmware.json'
+FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 FIRMWARE_CACHE_DIR = 'firmware_cache'
 
 
@@ -31,15 +32,24 @@ def list_serial_ports():
 
 
 def load_firmware_json():
-    """讀取 firmware.json"""
+    """從遠端 URL 讀取 firmware.json"""
     try:
-        with open(FIRMWARE_JSON_PATH, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"❌ 找不到 {FIRMWARE_JSON_PATH} 檔案。")
+        print(f"\n⬇️  正在從遠端載入 firmware.json...")
+        print(f"   URL: {FIRMWARE_JSON_URL}")
+        with urllib.request.urlopen(FIRMWARE_JSON_URL) as response:
+            content = response.read().decode('utf-8')
+            firmware_data = json.loads(content)
+            print(f"✅ 成功載入 firmware.json")
+            return firmware_data
+    except urllib.error.URLError as e:
+        print(f"❌ 無法連線到遠端伺服器：{e}")
+        print(f"   請檢查網路連接或 URL：{FIRMWARE_JSON_URL}")
         sys.exit(1)
     except json.JSONDecodeError as e:
-        print(f"❌ 無法解析 {FIRMWARE_JSON_PATH}：{e}")
+        print(f"❌ 無法解析 firmware.json：{e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ 載入 firmware.json 時發生錯誤：{e}")
         sys.exit(1)
 
 
