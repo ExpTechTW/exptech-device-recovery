@@ -304,7 +304,40 @@ def run_flash_tool():
                     print("   檔案必須是 .bin 格式。")
             else:
                 print("   檔案不存在，請重新輸入。")
-    else:
+
+    # 如果選擇了選項 2 或 3，直接燒錄本地檔案
+    if source_choice == '2' or source_choice == '3':
+        print(f"\n⚙️  設定資訊：")
+        print(f"   • 晶片類型: {CHIP_TYPE}")
+        print(f"   • 序列埠: {port}")
+        print(f"   • 檔案路徑: {bin_path}")
+        print(f"   • 燒錄位址: {APP_ADDRESS}")
+        print(f"   • 鮑率: {BAUD_RATE}")
+
+        esptool_args = [
+            '--chip', CHIP_TYPE,
+            '--port', port,
+            '--baud', str(BAUD_RATE),
+            'write-flash',
+            APP_ADDRESS,
+            bin_path
+        ]
+
+        print("\n" + "=" * 40)
+        print("⏳ 正在啟動燒錄...")
+        print("   （請依提示操作，例如按住 BOOT 鍵）")
+        print("=" * 40)
+
+        try:
+            esptool_main(esptool_args)
+            print("\n🎉 燒錄完成！請重新啟動您的 ESP32 裝置。")
+        except Exception as e:
+            print(f"\n❌ 燒錄失敗。錯誤訊息：{e}")
+            print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
+        return
+
+    # 選項 1：使用 firmware.json 中的固件燒錄
+    if source_choice == '1':
         firmware_data = load_firmware_json()
 
         selected_product = select_model(firmware_data)
@@ -360,35 +393,6 @@ def run_flash_tool():
             print(f"\n❌ 燒錄失敗。錯誤訊息：{e}")
             print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
         return
-
-    # 使用 test.bin 時只燒錄應用程式
-    print(f"\n⚙️  設定資訊：")
-    print(f"   • 晶片類型: {CHIP_TYPE}")
-    print(f"   • 序列埠: {port}")
-    print(f"   • 檔案路徑: {bin_path}")
-    print(f"   • 燒錄位址: {APP_ADDRESS}")
-    print(f"   • 鮑率: {BAUD_RATE}")
-
-    esptool_args = [
-        '--chip', CHIP_TYPE,
-        '--port', port,
-        '--baud', str(BAUD_RATE),
-        'write-flash',
-        APP_ADDRESS,
-        bin_path
-    ]
-
-    print("\n" + "=" * 40)
-    print("⏳ 正在啟動燒錄...")
-    print("   （請依提示操作，例如按住 BOOT 鍵）")
-    print("=" * 40)
-
-    try:
-        esptool_main(esptool_args)
-        print("\n🎉 燒錄完成！請重新啟動您的 ESP32 裝置。")
-    except Exception as e:
-        print(f"\n❌ 燒錄失敗。錯誤訊息：{e}")
-        print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
 
 
 if __name__ == '__main__':
