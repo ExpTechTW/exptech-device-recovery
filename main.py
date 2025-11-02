@@ -290,14 +290,24 @@ def run_flash_tool():
 
         version_info = select_version(selected_product)
 
+        # 從 product 取得 path，從 version 取得 version 號
+        product_path = selected_product.get('path', '')
+        version = version_info.get('version', 'unknown')
+
+        # 組合 URL：path/version.bin
+        if product_path:
+            url = f"{product_path}/{version}.bin"
+        else:
+            print("❌ 錯誤：產品未指定 path")
+            sys.exit(1)
+
         # 顯示版本資訊
         print(f"\n🔍 版本資訊：")
-        print(f"   • 版本號: {version_info.get('version', 'N/A')}")
-        print(f"   • URL: {version_info.get('url', 'N/A')}")
+        print(f"   • 版本號: {version}")
+        print(f"   • 類型: {version_info.get('type', 'N/A')}")
+        print(f"   • 路徑: {url}")
 
         # 下載應用程式固件
-        url = version_info.get('url', '')
-        version = version_info.get('version', 'unknown')
         bin_path = download_firmware(
             url, version, selected_product.get('model', 'unknown'))
 
