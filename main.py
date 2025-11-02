@@ -9,8 +9,6 @@ from esptool import main as esptool_main
 
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 460800
-BOOTLOADER_ADDRESS = '0x1000'
-PARTITION_TABLE_ADDRESS = '0x8000'
 APP_ADDRESS = '0x0'
 FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 BASE_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main'
@@ -136,14 +134,10 @@ def download_file(url, filepath, description="檔案", min_size=0):
 
         if file_size <= min_size:
             print(f"⚠️  警告：下載的 {description} 檔案過小或為空（{file_size} bytes）")
-            if description == "partition table":
-                print(f"   將跳過此 partition table 的燒錄")
+            confirm = input(f"   是否仍要使用此檔案？（y/N）：").strip().lower()
+            if confirm != 'y':
+                os.remove(filepath)
                 return None
-            else:
-                confirm = input(f"   是否仍要使用此檔案？（y/N）：").strip().lower()
-                if confirm != 'y':
-                    os.remove(filepath)
-                    return None
 
         print(f"✅ 下載完成：{filepath} ({file_size} bytes)")
         return filepath
@@ -167,51 +161,6 @@ def download_firmware(url, version, model):
     filename = f"{model}_{version}.bin"
     filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
     return download_file(url, filepath, "固件")
-
-
-def download_bootloader(bootloader_version):
-    """下載 bootloader"""
-    if not os.path.exists(FIRMWARE_CACHE_DIR):
-        os.makedirs(FIRMWARE_CACHE_DIR)
-
-    url = f"{BASE_URL}/bootloaders/{bootloader_version}.bin"
-    filename = f"bootloader_{bootloader_version}.bin"
-    filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
-    # Bootloader 應該至少要有幾百 bytes，設定最小 100 bytes
-    return download_file(url, filepath, "bootloader", min_size=100)
-
-
-def download_partition_table(partition_version):
-    """下載 partition table，如果遠端為空則嘗試使用本地檔案"""
-    if not os.path.exists(FIRMWARE_CACHE_DIR):
-        os.makedirs(FIRMWARE_CACHE_DIR)
-
-    url = f"{BASE_URL}/partition-tables/{partition_version}.bin"
-    filename = f"partition_{partition_version}.bin"
-    filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
-
-    # 嘗試下載
-    result = download_file(url, filepath, "partition table", min_size=50)
-
-    # 如果遠端檔案為空，嘗試使用本地檔案
-    if result is None:
-        local_path = f"partition-tables/{partition_version}.bin"
-        if os.path.exists(local_path) and os.path.getsize(local_path) > 50:
-            print(f"\n📂 發現本地 partition table 檔案：{local_path}")
-            use_local = input("   是否使用本地檔案？（Y/n）：").strip().lower()
-            if use_local != 'n':
-                print(f"   使用本地檔案：{local_path}")
-                return local_path
-            else:
-                print("   跳過 partition table 燒錄")
-                return None
-        else:
-            print("\n⚠️  警告：partition table 檔案為空或不存在")
-            print("   ESP32 可能需要有效的 partition table 才能正常啟動")
-            print("   建議：請確保遠端或本地有有效的 partition table 檔案")
-            return None
-
-    return result
 
 
 def get_bin_file_path():
@@ -286,9 +235,7 @@ def run_flash_tool():
 
     print("=" * 40)
     print(f"🚀 ESP32 固件燒錄工具 ({CHIP_TYPE})")
-    print(f"📍 Bootloader: {BOOTLOADER_ADDRESS}")
-    print(f"📍 Partition Table: {PARTITION_TABLE_ADDRESS}")
-    print(f"📍 應用程式: {APP_ADDRESS}")
+    print(f"📍 應用程式起始位址: {APP_ADDRESS}")
     print("=" * 40)
     print()
 
@@ -343,30 +290,10 @@ def run_flash_tool():
 
         version_info = select_version(selected_product)
 
-        # 調試：顯示讀取到的版本資訊
-        print(f"\n🔍 版本資訊詳情：")
+        # 顯示版本資訊
+        print(f"\n🔍 版本資訊：")
         print(f"   • 版本號: {version_info.get('version', 'N/A')}")
-        print(f"   • Bootloader: {version_info.get('bootloader', 'N/A')}")
-        print(f"   • Partitions: {version_info.get('partitions', 'N/A')}")
         print(f"   • URL: {version_info.get('url', 'N/A')}")
-
-        # 檢查並下載 bootloader（如果有指定）
-        bootloader_path = None
-        bootloader_version = version_info.get('bootloader')
-        if bootloader_version:
-            print(f"\n📦 發現 bootloader 版本：{bootloader_version}")
-            bootloader_path = download_bootloader(bootloader_version)
-        else:
-            print("\n⚠️  未指定 bootloader 版本，將跳過 bootloader 燒錄")
-
-        # 檢查並下載 partition table（如果有指定）
-        partition_path = None
-        partition_version = version_info.get('partitions')
-        if partition_version:
-            print(f"\n📦 發現 partition table 版本：{partition_version}")
-            partition_path = download_partition_table(partition_version)
-        else:
-            print("\n⚠️  未指定 partition table 版本，將跳過 partition table 燒錄")
 
         # 下載應用程式固件
         url = version_info.get('url', '')
@@ -374,34 +301,20 @@ def run_flash_tool():
         bin_path = download_firmware(
             url, version, selected_product.get('model', 'unknown'))
 
-        # 準備燒錄參數（依序燒錄 bootloader、partition table、app）
+        # 準備燒錄參數
         esptool_args = [
             '--chip', CHIP_TYPE,
             '--port', port,
             '--baud', str(BAUD_RATE),
-            'write-flash'
+            'write-flash',
+            APP_ADDRESS,
+            bin_path
         ]
-
-        # 添加 bootloader（如果存在）
-        if bootloader_path:
-            esptool_args.extend([BOOTLOADER_ADDRESS, bootloader_path])
-
-        # 添加 partition table（如果存在）
-        if partition_path:
-            esptool_args.extend([PARTITION_TABLE_ADDRESS, partition_path])
-
-        # 添加應用程式
-        esptool_args.extend([APP_ADDRESS, bin_path])
 
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
         print(f"   • 序列埠: {port}")
         print(f"   • 鮑率: {BAUD_RATE}")
-        if bootloader_path:
-            print(f"   • Bootloader: {bootloader_path} @ {BOOTLOADER_ADDRESS}")
-        if partition_path:
-            print(
-                f"   • Partition Table: {partition_path} @ {PARTITION_TABLE_ADDRESS}")
         print(f"   • 應用程式: {bin_path} @ {APP_ADDRESS}")
 
         print("\n" + "=" * 40)
