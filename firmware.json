@@ -4,13 +4,9 @@
     {
       "model": "es-net",
       "name": "ES-net",
-      "update": "2025-11-01",
+      "update": "2025-11-26",
       "path": "firmware/es/es-net",
       "versions": [
-        {
-          "version": "25w44c",
-          "type": "Pre-Release"
-        },
         {
           "version": "25w47a",
           "type": "Pre-Release"
@@ -20,8 +16,14 @@
     {
       "model": "es-pro",
       "name": "ES-Pro",
-      "update": "2025-11-01",
-      "versions": []
+      "update": "2025-11-26",
+      "path": "firmware/es/es-pro",
+      "versions": [
+        {
+          "version": "25w47a",
+          "type": "Pre-Release"
+        }
+      ]
     }
   ]
 }
