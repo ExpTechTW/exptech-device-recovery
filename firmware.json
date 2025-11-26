@@ -18,6 +18,10 @@
         {
           "version": "25w48b",
           "type": "Pre-Release"
+        },
+        {
+          "version": "25w48c",
+          "type": "Pre-Release"
         }
       ]
     },
@@ -33,6 +37,10 @@
         },
         {
           "version": "25w48a",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "25w48b",
           "type": "Pre-Release"
         }
       ]
