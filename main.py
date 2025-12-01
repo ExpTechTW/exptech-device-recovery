@@ -80,7 +80,7 @@ def select_model(firmware_data):
 
 
 def select_version(product):
-    """選擇版本並返回版本資訊（默認選擇最新版本）"""
+    """選擇版本並返回版本資訊（預設選擇最新版本）"""
     versions = product.get('versions', [])
 
     if not versions:
@@ -90,12 +90,12 @@ def select_version(product):
     print(f"\n✅ 可用版本（{product.get('name', product.get('model', ''))}）：")
     for i, version in enumerate(versions):
         ver = version.get('version', '未知')
-        default_mark = " (最新，默認)" if i == 0 else ""
+        default_mark = " (最新，預設)" if i == 0 else ""
         print(f"   [{i + 1}] {ver}{default_mark}")
 
     while True:
         choice = input(
-            f"   請選擇版本序號（1-{len(versions)}，按 Enter 使用默認最新版本）：").strip()
+            f"   請選擇版本序號（1-{len(versions)}，按 Enter 使用預設最新版本）：").strip()
 
         if not choice:
             choice = '1'
@@ -143,7 +143,7 @@ def download_file(url, filepath, description="檔案", min_size=0):
 
 
 def download_firmware(url, version, model):
-    """下載固件檔案（支援相對路徑和完整 URL）"""
+    """下載韌體檔案（支援相對路徑和完整 URL）"""
     if not os.path.exists(FIRMWARE_CACHE_DIR):
         os.makedirs(FIRMWARE_CACHE_DIR)
 
@@ -156,7 +156,7 @@ def download_firmware(url, version, model):
 
     filename = f"{model}_{version}.bin"
     filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
-    return download_file(url, filepath, "固件")
+    return download_file(url, filepath, "韌體")
 
 
 def get_bin_file_path():
@@ -230,18 +230,18 @@ def run_flash_tool():
     """主程式：執行燒錄作業"""
 
     print("=" * 40)
-    print(f"🚀 ESP32 固件燒錄工具 ({CHIP_TYPE})")
+    print(f"🚀 ESP32 韌體燒錄工具 ({CHIP_TYPE})")
     print(f"📍 應用程式起始位址: {APP_ADDRESS}")
     print("=" * 40)
     print()
 
     print("✅ 請選擇操作模式：")
-    print("   [1] 使用 firmware.json 中的固件燒錄（默認）")
+    print("   [1] 使用 firmware.json 中的韌體燒錄（預設）")
     print("   [2] 使用 test.bin 燒錄")
-    print("   [3] 指定本地 bin 檔案")
+    print("   [3] 指定本機 bin 檔案")
     print("   [4] 完全清除 ESP32 flash 記憶體")
 
-    source_choice = input("   請選擇（1-4，按 Enter 使用默認）：").strip()
+    source_choice = input("   請選擇（1-4，按 Enter 使用預設）：").strip()
     if not source_choice:
         source_choice = '1'
 
@@ -281,8 +281,8 @@ def run_flash_tool():
                     break
                 print("   檔案不存在，請重新輸入。")
     elif source_choice == '3':
-        # 指定本地 bin 檔案
-        print("\n📁 請指定本地 bin 檔案：")
+        # 指定本機 bin 檔案
+        print("\n📁 請指定本機 bin 檔案：")
         while True:
             file_path = input("   請輸入 bin 檔案的完整路徑（或相對路徑）：").strip()
             if file_path.lower() == 'exit':
@@ -305,7 +305,7 @@ def run_flash_tool():
             else:
                 print("   檔案不存在，請重新輸入。")
 
-    # 如果選擇了選項 2 或 3，直接燒錄本地檔案
+    # 如果選擇了選項 2 或 3，直接燒錄本機檔案
     if source_choice == '2' or source_choice == '3':
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
@@ -336,7 +336,7 @@ def run_flash_tool():
             print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
         return
 
-    # 選項 1：使用 firmware.json 中的固件燒錄
+    # 選項 1：使用 firmware.json 中的韌體燒錄
     if source_choice == '1':
         firmware_data = load_firmware_json()
 
@@ -361,7 +361,7 @@ def run_flash_tool():
         print(f"   • 類型: {version_info.get('type', 'N/A')}")
         print(f"   • 路徑: {url}")
 
-        # 下載應用程式固件
+        # 下載應用程式韌體
         bin_path = download_firmware(
             url, version, selected_product.get('model', 'unknown'))
 
