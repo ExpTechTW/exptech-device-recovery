@@ -6,6 +6,7 @@ import urllib.request
 import urllib.error
 import serial.tools.list_ports
 from esptool import main as esptool_main
+import readchar
 
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
@@ -23,11 +24,13 @@ def list_serial_ports():
         sys.exit(1)
 
     port_list = []
-    print("\n✅ 可用序列埠：")
-    for i, port in enumerate(ports):
-        desc = port.description if 'USB' in port.description or 'tty' in port.name else port.device
-        print(f"   [{i + 1}] {port.device} ({desc})")
-        port_list.append(port.device)
+    for port in ports:
+        desc = port.description if port.description else port.device
+        port_list.append({
+            'device': port.device,
+            'description': desc,
+            'full_info': f"{port.device} ({desc})"
+        })
 
     return port_list
 
@@ -54,6 +57,48 @@ def load_firmware_json():
         sys.exit(1)
 
 
+def interactive_select(items, title, default_index=None, get_label=None):
+    """互動式選擇（支持上下鍵）"""
+    if not items:
+        return None
+    
+    if default_index is None:
+        default_index = len(items) - 1  # 默認選擇最後一個
+    
+    current_index = default_index
+    
+    def display():
+        print(f"\n{title}")
+        print("   使用 ↑↓ 鍵選擇，Enter 確認，q 退出")
+        for i, item in enumerate(items):
+            label = get_label(item, i) if get_label else str(item)
+            if i == current_index:
+                marker = "→ "
+                # 使用反白顯示當前選項
+                print(f"{marker}\033[7m[{i + 1}] {label}\033[0m")
+            else:
+                marker = "  "
+                print(f"{marker}[{i + 1}] {label}")
+    
+    while True:
+        # 清除並重新顯示
+        sys.stdout.write('\033[2J\033[H')  # 清屏並移動到頂部
+        display()
+        
+        key = readchar.readkey()
+        
+        # readchar 會自動處理箭頭鍵
+        if key == readchar.key.UP:  # 上箭頭
+            current_index = max(0, current_index - 1)
+        elif key == readchar.key.DOWN:  # 下箭頭
+            current_index = min(len(items) - 1, current_index + 1)
+        elif key == readchar.key.ENTER or key == '\r' or key == '\n':  # Enter
+            sys.stdout.write('\033[2J\033[H')  # 清屏
+            return items[current_index]
+        elif key == 'q' or key == 'Q':
+            sys.exit(0)
+
+
 def select_model(firmware_data):
     """選擇型號（model）"""
     products = firmware_data.get('product', [])
@@ -65,45 +110,97 @@ def select_model(firmware_data):
         print("❌ 未找到任何有可用版本的產品。")
         sys.exit(1)
 
-    print("\n✅ 可用型號：")
-    for i, product in enumerate(available_products):
+    def get_product_label(product, index):
         model = product.get('model', '')
         name = product.get('name', model)
         versions_count = len(product.get('versions', []))
-        print(f"   [{i + 1}] {name} ({model}) - {versions_count} 個版本")
+        return f"{name} ({model}) - {versions_count} 個版本"
+    
+    return interactive_select(
+        available_products,
+        "✅ 可用型號：",
+        default_index=0,
+        get_label=get_product_label
+    )
 
-    while True:
-        choice = input(f"   請選擇型號序號（1-{len(available_products)}）：").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(available_products):
-            return available_products[int(choice) - 1]
-        print("   輸入無效，請重新輸入。")
+
+def select_channel():
+    """選擇更新通道"""
+    channels = [
+        {'name': 'Release', 'desc': '僅顯示正式版本'},
+        {'name': 'All', 'desc': 'Pre-Release + Release（顯示所有版本）'}
+    ]
+    
+    def get_channel_label(channel, index):
+        default_mark = " (默認)" if index == 0 else ""
+        return f"{channel['name']} - {channel['desc']}{default_mark}"
+    
+    selected = interactive_select(
+        channels,
+        "✅ 請選擇更新通道：",
+        default_index=0,
+        get_label=get_channel_label
+    )
+    
+    return selected['name']
 
 
-def select_version(product):
+def parse_version(version_str):
+    """解析版本號，返回 (年份, 週數, 字母) 用於排序"""
+    # 格式：25w47a -> (25, 47, 'a')
+    try:
+        if 'w' in version_str.lower():
+            parts = version_str.lower().split('w')
+            year = int(parts[0])
+            week_part = parts[1]
+            # 提取週數和字母
+            week = int(''.join(filter(str.isdigit, week_part)))
+            letter = ''.join(filter(str.isalpha, week_part))
+            if not letter:
+                letter = 'a'  # 默認字母為 'a'
+            return (year, week, letter)
+        return (0, 0, 'a')
+    except:
+        return (0, 0, 'a')
+
+
+def select_version(product, channel='All'):
     """選擇版本並返回版本資訊（默認選擇最新版本）"""
-    versions = product.get('versions', [])
+    all_versions = product.get('versions', [])
 
-    if not versions:
+    if not all_versions:
         print("❌ 此型號沒有可用版本。")
         sys.exit(1)
 
-    print(f"\n✅ 可用版本（{product.get('name', product.get('model', ''))}）：")
-    for i, version in enumerate(versions):
+    # 根據通道過濾版本
+    if channel == 'Release':
+        versions = [v for v in all_versions if v.get('type', '') == 'Release']
+        if not versions:
+            print("❌ 此通道沒有可用版本。")
+            sys.exit(1)
+    else:
+        versions = all_versions
+
+    # 按照版本號排序：年份 -> 週數 -> 字母
+    # 例如：25w47a < 25w48a < 25w48b < 25w50a
+    versions = sorted(versions, key=lambda v: parse_version(v.get('version', '')))
+
+    def get_version_label(version, index):
         ver = version.get('version', '未知')
-        default_mark = " (最新，默認)" if i == 0 else ""
-        print(f"   [{i + 1}] {ver}{default_mark}")
-
-    while True:
-        choice = input(
-            f"   請選擇版本序號（1-{len(versions)}，按 Enter 使用默認最新版本）：").strip()
-
-        if not choice:
-            choice = '1'
-
-        if choice.isdigit() and 1 <= int(choice) <= len(versions):
-            selected_version = versions[int(choice) - 1]
-            return selected_version
-        print("   輸入無效，請重新輸入。")
+        ver_type = version.get('type', '')
+        type_mark = f" [{ver_type}]" if ver_type else ""
+        # 最後一個（最新的）標記為默認
+        default_mark = " (最新，默認)" if index == len(versions) - 1 else ""
+        return f"{ver}{type_mark}{default_mark}"
+    
+    title = f"✅ 可用版本（{product.get('name', product.get('model', ''))}，通道：{channel if channel == 'Release' else 'All'}）："
+    
+    return interactive_select(
+        versions,
+        title,
+        default_index=len(versions) - 1,  # 默認選擇最後一個（最新的）
+        get_label=get_version_label
+    )
 
 
 def download_file(url, filepath, description="檔案", min_size=0):
@@ -194,8 +291,23 @@ def erase_esp32(port):
     print("⚠️  此操作不可逆轉，所有資料將被刪除")
     print("=" * 40)
 
-    confirm = input("\n   請輸入 'YES' 確認清除操作：").strip()
-    if confirm != 'YES':
+    # 確認清除操作
+    confirm_options = [
+        {'value': True, 'name': '是，確認清除', 'desc': '將完全清除 ESP32 flash 記憶體'},
+        {'value': False, 'name': '否，取消操作', 'desc': '返回主選單'}
+    ]
+    
+    def get_confirm_label(option, index):
+        return f"{option['name']} - {option['desc']}"
+    
+    selected_confirm = interactive_select(
+        confirm_options,
+        "⚠️  警告：即將完全清除 ESP32 的 flash 記憶體\n⚠️  此操作不可逆轉，所有資料將被刪除\n\n   請確認：",
+        default_index=1,  # 默認選擇取消
+        get_label=get_confirm_label
+    )
+    
+    if not selected_confirm['value']:
         print("   操作已取消。")
         return False
 
@@ -235,28 +347,39 @@ def run_flash_tool():
     print("=" * 40)
     print()
 
-    print("✅ 請選擇操作模式：")
-    print("   [1] 使用 firmware.json 中的固件燒錄（默認）")
-    print("   [2] 使用 test.bin 燒錄")
-    print("   [3] 指定本地 bin 檔案")
-    print("   [4] 完全清除 ESP32 flash 記憶體")
+    # 選擇操作模式
+    modes = [
+        {'id': '1', 'name': '使用 firmware.json 中的固件燒錄', 'desc': '從遠端下載並燒錄固件'},
+        {'id': '2', 'name': '使用 test.bin 燒錄', 'desc': '燒錄本地的 test.bin 檔案'},
+        {'id': '3', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
+        {'id': '4', 'name': '完全清除 ESP32 flash 記憶體', 'desc': '清除所有 flash 資料'}
+    ]
+    
+    def get_mode_label(mode, index):
+        default_mark = " (默認)" if index == 0 else ""
+        return f"{mode['name']} - {mode['desc']}{default_mark}"
+    
+    selected_mode = interactive_select(
+        modes,
+        "✅ 請選擇操作模式：",
+        default_index=0,
+        get_label=get_mode_label
+    )
+    source_choice = selected_mode['id']
 
-    source_choice = input("   請選擇（1-4，按 Enter 使用默認）：").strip()
-    if not source_choice:
-        source_choice = '1'
-
-    # 選擇序列埠（清除模式也需要選擇序列埠）
+    # 選擇序列埠
     port_list = list_serial_ports()
-    while True:
-        port_choice = input(
-            f"   請選擇序列埠序號（1-{len(port_list)}），或輸入完整名稱：").strip()
-        if port_choice.isdigit() and 1 <= int(port_choice) <= len(port_list):
-            port = port_list[int(port_choice) - 1]
-            break
-        elif port_choice:
-            port = port_choice
-            break
-        print("   輸入無效，請重新輸入。")
+    
+    def get_port_label(port_info, index):
+        return port_info['full_info']
+    
+    selected_port_info = interactive_select(
+        port_list,
+        "✅ 請選擇序列埠：",
+        default_index=0,
+        get_label=get_port_label
+    )
+    port = selected_port_info['device']
 
     # 如果選擇清除模式，執行清除並退出
     if source_choice == '4':
@@ -341,8 +464,11 @@ def run_flash_tool():
         firmware_data = load_firmware_json()
 
         selected_product = select_model(firmware_data)
+        
+        # 選擇更新通道
+        channel = select_channel()
 
-        version_info = select_version(selected_product)
+        version_info = select_version(selected_product, channel)
 
         # 從 product 取得 path，從 version 取得 version 號
         product_path = selected_product.get('path', '')
@@ -401,3 +527,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\n操作已中斷。程式結束。")
         sys.exit(0)
+
