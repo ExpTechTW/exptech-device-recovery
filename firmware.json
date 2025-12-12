@@ -8,22 +8,6 @@
       "path": "firmware/es/es-net",
       "versions": [
         {
-          "version": "25w47a",
-          "type": "Pre-Release"
-        },
-        {
-          "version": "25w48a",
-          "type": "Pre-Release"
-        },
-        {
-          "version": "25w48b",
-          "type": "Pre-Release"
-        },
-        {
-          "version": "25w48c",
-          "type": "Pre-Release"
-        },
-        {
           "version": "25w50a",
           "type": "Pre-Release"
         }
@@ -34,20 +18,7 @@
       "name": "ES-Pro",
       "update": "2025-11-26",
       "path": "firmware/es/es-pro",
-      "versions": [
-        {
-          "version": "25w47a",
-          "type": "Pre-Release"
-        },
-        {
-          "version": "25w48a",
-          "type": "Pre-Release"
-        },
-        {
-          "version": "25w48b",
-          "type": "Pre-Release"
-        }
-      ]
+      "versions": []
     }
   ]
 }
