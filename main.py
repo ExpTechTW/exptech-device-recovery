@@ -536,3 +536,5 @@ if __name__ == '__main__':
         print("\n操作已中斷。程式結束。")
         sys.exit(0)
 
+    input("\n按 Enter 鍵關閉視窗...")
+
