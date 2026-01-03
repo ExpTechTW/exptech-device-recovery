@@ -6,12 +6,7 @@
       "name": "ES-net",
       "update": "2025-12-22",
       "path": "firmware/es/es-net",
-      "versions": [
-        {
-          "version": "25w52a",
-          "type": "Pre-Release"
-        }
-      ]
+      "versions": []
     },
     {
       "model": "es-pro",
@@ -19,10 +14,6 @@
       "update": "2026-01-04",
       "path": "firmware/es/es-pro",
       "versions": [
-        {
-          "version": "25w50a",
-          "type": "Pre-Release"
-        },
         {
           "version": "26w01d",
           "type": "Pre-Release"
