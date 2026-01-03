@@ -1,2 +1,4 @@
 /venv
 /firmware_cache
+/build
+/dist

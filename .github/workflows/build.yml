@@ -1,0 +1,72 @@
+name: Build Executable
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+            artifact: exptech-device-recovery
+          - os: windows-latest
+            name: windows
+            artifact: exptech-device-recovery.exe
+          - os: macos-latest
+            name: macos
+            artifact: exptech-device-recovery
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: pyinstaller build.spec --clean --noconfirm
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exptech-device-recovery-${{ matrix.name }}
+          path: dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir release
+          cp artifacts/exptech-device-recovery-linux/exptech-device-recovery release/exptech-device-recovery-linux
+          cp artifacts/exptech-device-recovery-windows/exptech-device-recovery.exe release/exptech-device-recovery-windows.exe
+          cp artifacts/exptech-device-recovery-macos/exptech-device-recovery release/exptech-device-recovery-macos
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
