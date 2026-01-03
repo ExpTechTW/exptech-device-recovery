@@ -75,6 +75,9 @@ def interactive_select(items, title, default_index=None, get_label=None):
     current_index = default_index
     
     def display():
+        print("=" * 40)
+        print(f"🚀 ESP32 韌體燒錄工具 v{VERSION}")
+        print("=" * 40)
         print(f"\n{title}")
         print("   使用 ↑↓ 鍵選擇，Enter 確認，q 退出")
         for i, item in enumerate(items):
@@ -349,12 +352,6 @@ def erase_esp32(port):
 
 def run_flash_tool():
     """主程式：執行燒錄作業"""
-
-    print("=" * 40)
-    print(f"🚀 ESP32 韌體燒錄工具 v{VERSION}")
-    print(f"📍 應用程式起始位址: {APP_ADDRESS}")
-    print("=" * 40)
-    print()
 
     # 選擇操作模式
     modes = [
