@@ -4,9 +4,14 @@
     {
       "model": "es-net",
       "name": "ES-net",
-      "update": "2025-12-22",
+      "update": "2026-01-04",
       "path": "firmware/es/es-net",
-      "versions": []
+      "versions": [
+        {
+          "version": "26w01d",
+          "type": "Pre-Release"
+        }
+      ]
     },
     {
       "model": "es-pro",
