@@ -13,6 +13,7 @@ import readchar
 # Setup SSL context with certifi certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
+VERSION = '1.0.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
 FLASH_FREQ = '80m'
@@ -350,7 +351,7 @@ def run_flash_tool():
     """主程式：執行燒錄作業"""
 
     print("=" * 40)
-    print(f"🚀 ESP32 韌體燒錄工具 ({CHIP_TYPE})")
+    print(f"🚀 ESP32 韌體燒錄工具 v{VERSION}")
     print(f"📍 應用程式起始位址: {APP_ADDRESS}")
     print("=" * 40)
     print()
