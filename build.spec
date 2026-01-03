@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 block_cipher = None
 
@@ -9,11 +9,14 @@ block_cipher = None
 esptool_datas = collect_data_files('esptool')
 esptool_hiddenimports = collect_submodules('esptool')
 
+# Collect metadata for packages that need it
+readchar_metadata = copy_metadata('readchar')
+
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=esptool_datas,
+    datas=esptool_datas + readchar_metadata,
     hiddenimports=[
         'serial',
         'serial.tools',
@@ -27,7 +30,6 @@ a = Analysis(
         'esptool.targets',
         'esptool.util',
         'readchar',
-        'readchar.readchar',
     ] + esptool_hiddenimports,
     hookspath=[],
     hooksconfig={},

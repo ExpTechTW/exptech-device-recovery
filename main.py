@@ -10,6 +10,7 @@ import readchar
 
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
+FLASH_FREQ = '80m'
 APP_ADDRESS = '0x0'
 FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 BASE_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main'
@@ -442,6 +443,7 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
+            '--flash_freq', FLASH_FREQ,
             APP_ADDRESS,
             bin_path
         ]
@@ -497,6 +499,7 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
+            '--flash_freq', FLASH_FREQ,
             APP_ADDRESS,
             bin_path
         ]
