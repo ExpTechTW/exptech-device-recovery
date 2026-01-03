@@ -1,6 +1,6 @@
 # ExpTech Device Recovery
 
-ESP32 固件燒錄工具
+ESP32 韌體燒錄工具
 
 ## 下載
 
@@ -37,7 +37,7 @@ chmod +x ./exptech-device-recovery-linux
 
 ## 功能
 
-- 從遠端下載並燒錄固件
+- 從遠端下載並燒錄韌體
 - 燒錄本地 `.bin` 檔案
 - 完全清除 ESP32 flash 記憶體
 

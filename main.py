@@ -2,11 +2,16 @@ import sys
 import glob
 import json
 import os
+import ssl
 import urllib.request
 import urllib.error
+import certifi
 import serial.tools.list_ports
 from esptool import main as esptool_main
 import readchar
+
+# Setup SSL context with certifi certificates
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
@@ -41,7 +46,7 @@ def load_firmware_json():
     try:
         print(f"\n⬇️  正在從遠端載入 firmware.json...")
         print(f"   URL: {FIRMWARE_JSON_URL}")
-        with urllib.request.urlopen(FIRMWARE_JSON_URL) as response:
+        with urllib.request.urlopen(FIRMWARE_JSON_URL, context=ssl_context) as response:
             content = response.read().decode('utf-8')
             firmware_data = json.loads(content)
             print(f"✅ 成功載入 firmware.json")
@@ -64,7 +69,7 @@ def interactive_select(items, title, default_index=None, get_label=None):
         return None
     
     if default_index is None:
-        default_index = len(items) - 1  # 默認選擇最後一個
+        default_index = len(items) - 1  # 預設選擇最後一個
     
     current_index = default_index
     
@@ -133,7 +138,7 @@ def select_channel():
     ]
     
     def get_channel_label(channel, index):
-        default_mark = " (默認)" if index == 0 else ""
+        default_mark = " (預設)" if index == 0 else ""
         return f"{channel['name']} - {channel['desc']}{default_mark}"
     
     selected = interactive_select(
@@ -158,7 +163,7 @@ def parse_version(version_str):
             week = int(''.join(filter(str.isdigit, week_part)))
             letter = ''.join(filter(str.isalpha, week_part))
             if not letter:
-                letter = 'a'  # 默認字母為 'a'
+                letter = 'a'  # 預設字母為 'a'
             return (year, week, letter)
         return (0, 0, 'a')
     except:
@@ -166,7 +171,7 @@ def parse_version(version_str):
 
 
 def select_version(product, channel='All'):
-    """選擇版本並返回版本資訊（默認選擇最新版本）"""
+    """選擇版本並返回版本資訊（預設選擇最新版本）"""
     all_versions = product.get('versions', [])
 
     if not all_versions:
@@ -190,8 +195,8 @@ def select_version(product, channel='All'):
         ver = version.get('version', '未知')
         ver_type = version.get('type', '')
         type_mark = f" [{ver_type}]" if ver_type else ""
-        # 最後一個（最新的）標記為默認
-        default_mark = " (最新，默認)" if index == len(versions) - 1 else ""
+        # 最後一個（最新的）標記為預設
+        default_mark = " (最新，預設)" if index == len(versions) - 1 else ""
         return f"{ver}{type_mark}{default_mark}"
     
     title = f"✅ 可用版本（{product.get('name', product.get('model', ''))}，通道：{channel if channel == 'Release' else 'All'}）："
@@ -199,7 +204,7 @@ def select_version(product, channel='All'):
     return interactive_select(
         versions,
         title,
-        default_index=len(versions) - 1,  # 默認選擇最後一個（最新的）
+        default_index=len(versions) - 1,  # 預設選擇最後一個（最新的）
         get_label=get_version_label
     )
 
@@ -223,7 +228,9 @@ def download_file(url, filepath, description="檔案", min_size=0):
     print(f"   儲存位置: {filepath}")
 
     try:
-        urllib.request.urlretrieve(url, filepath)
+        with urllib.request.urlopen(url, context=ssl_context) as response:
+            with open(filepath, 'wb') as f:
+                f.write(response.read())
         file_size = os.path.getsize(filepath)
 
         if file_size <= min_size:
@@ -241,7 +248,7 @@ def download_file(url, filepath, description="檔案", min_size=0):
 
 
 def download_firmware(url, version, model):
-    """下載固件檔案（支援相對路徑和完整 URL）"""
+    """下載韌體檔案（支援相對路徑和完整 URL）"""
     if not os.path.exists(FIRMWARE_CACHE_DIR):
         os.makedirs(FIRMWARE_CACHE_DIR)
 
@@ -254,7 +261,7 @@ def download_firmware(url, version, model):
 
     filename = f"{model}_{version}.bin"
     filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
-    return download_file(url, filepath, "固件")
+    return download_file(url, filepath, "韌體")
 
 
 def get_bin_file_path():
@@ -304,7 +311,7 @@ def erase_esp32(port):
     selected_confirm = interactive_select(
         confirm_options,
         "⚠️  警告：即將完全清除 ESP32 的 flash 記憶體\n⚠️  此操作不可逆轉，所有資料將被刪除\n\n   請確認：",
-        default_index=1,  # 默認選擇取消
+        default_index=1,  # 預設選擇取消
         get_label=get_confirm_label
     )
     
@@ -343,21 +350,21 @@ def run_flash_tool():
     """主程式：執行燒錄作業"""
 
     print("=" * 40)
-    print(f"🚀 ESP32 固件燒錄工具 ({CHIP_TYPE})")
+    print(f"🚀 ESP32 韌體燒錄工具 ({CHIP_TYPE})")
     print(f"📍 應用程式起始位址: {APP_ADDRESS}")
     print("=" * 40)
     print()
 
     # 選擇操作模式
     modes = [
-        {'id': '1', 'name': '使用 firmware.json 中的固件燒錄', 'desc': '從遠端下載並燒錄固件'},
+        {'id': '1', 'name': '使用 firmware.json 中的韌體燒錄', 'desc': '從遠端下載並燒錄韌體'},
         {'id': '2', 'name': '使用 test.bin 燒錄', 'desc': '燒錄本地的 test.bin 檔案'},
         {'id': '3', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
         {'id': '4', 'name': '完全清除 ESP32 flash 記憶體', 'desc': '清除所有 flash 資料'}
     ]
     
     def get_mode_label(mode, index):
-        default_mark = " (默認)" if index == 0 else ""
+        default_mark = " (預設)" if index == 0 else ""
         return f"{mode['name']} - {mode['desc']}{default_mark}"
     
     selected_mode = interactive_select(
@@ -461,7 +468,7 @@ def run_flash_tool():
             print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
         return
 
-    # 選項 1：使用 firmware.json 中的固件燒錄
+    # 選項 1：使用 firmware.json 中的韌體燒錄
     if source_choice == '1':
         firmware_data = load_firmware_json()
 
@@ -489,7 +496,7 @@ def run_flash_tool():
         print(f"   • 類型: {version_info.get('type', 'N/A')}")
         print(f"   • 路徑: {url}")
 
-        # 下載應用程式固件
+        # 下載應用程式韌體
         bin_path = download_firmware(
             url, version, selected_product.get('model', 'unknown'))
 

@@ -12,11 +12,14 @@ esptool_hiddenimports = collect_submodules('esptool')
 # Collect metadata for packages that need it
 readchar_metadata = copy_metadata('readchar')
 
+# Collect certifi CA certificates
+certifi_datas = collect_data_files('certifi')
+
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=esptool_datas + readchar_metadata,
+    datas=esptool_datas + readchar_metadata + certifi_datas,
     hiddenimports=[
         'serial',
         'serial.tools',
