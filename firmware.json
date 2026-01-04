@@ -8,7 +8,7 @@
       "path": "firmware/es/es-net",
       "versions": [
         {
-          "version": "26w01e",
+          "version": "26w01f",
           "type": "Pre-Release"
         }
       ]
@@ -20,7 +20,7 @@
       "path": "firmware/es/es-pro",
       "versions": [
         {
-          "version": "26w01e",
+          "version": "26w01f",
           "type": "Pre-Release"
         }
       ]
