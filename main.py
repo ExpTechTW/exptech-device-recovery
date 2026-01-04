@@ -13,7 +13,7 @@ import readchar
 # Setup SSL context with certifi certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
 FLASH_FREQ = '80m'
@@ -70,12 +70,12 @@ def interactive_select(items, title, default_index=None, get_label=None):
     """互動式選擇（支持上下鍵）"""
     if not items:
         return None
-    
+
     if default_index is None:
         default_index = len(items) - 1  # 預設選擇最後一個
-    
+
     current_index = default_index
-    
+
     def display():
         print("=" * 40)
         print(f"🚀 ESP32 韌體燒錄工具 v{VERSION}")
@@ -91,14 +91,14 @@ def interactive_select(items, title, default_index=None, get_label=None):
             else:
                 marker = "  "
                 print(f"{marker}[{i + 1}] {label}")
-    
+
     while True:
         # 清除並重新顯示
         sys.stdout.write('\033[2J\033[H')  # 清屏並移動到頂部
         display()
-        
+
         key = readchar.readkey()
-        
+
         # readchar 會自動處理箭頭鍵
         if key == readchar.key.UP:  # 上箭頭
             current_index = max(0, current_index - 1)
@@ -127,7 +127,7 @@ def select_model(firmware_data):
         name = product.get('name', model)
         versions_count = len(product.get('versions', []))
         return f"{name} ({model}) - {versions_count} 個版本"
-    
+
     return interactive_select(
         available_products,
         "✅ 可用型號：",
@@ -142,18 +142,18 @@ def select_channel():
         {'name': 'Release', 'desc': '僅顯示正式版本'},
         {'name': 'All', 'desc': 'Pre-Release + Release（顯示所有版本）'}
     ]
-    
+
     def get_channel_label(channel, index):
         default_mark = " (預設)" if index == 0 else ""
         return f"{channel['name']} - {channel['desc']}{default_mark}"
-    
+
     selected = interactive_select(
         channels,
         "✅ 請選擇更新通道：",
         default_index=0,
         get_label=get_channel_label
     )
-    
+
     return selected['name']
 
 
@@ -195,7 +195,8 @@ def select_version(product, channel='All'):
 
     # 按照版本號排序：年份 -> 週數 -> 字母
     # 例如：25w47a < 25w48a < 25w48b < 25w50a
-    versions = sorted(versions, key=lambda v: parse_version(v.get('version', '')))
+    versions = sorted(
+        versions, key=lambda v: parse_version(v.get('version', '')))
 
     def get_version_label(version, index):
         ver = version.get('version', '未知')
@@ -204,9 +205,9 @@ def select_version(product, channel='All'):
         # 最後一個（最新的）標記為預設
         default_mark = " (最新，預設)" if index == len(versions) - 1 else ""
         return f"{ver}{type_mark}{default_mark}"
-    
+
     title = f"✅ 可用版本（{product.get('name', product.get('model', ''))}，通道：{channel if channel == 'Release' else 'All'}）："
-    
+
     return interactive_select(
         versions,
         title,
@@ -333,17 +334,17 @@ def erase_esp32(port):
         {'value': True, 'name': '是，確認清除', 'desc': '將完全清除 ESP32 flash 記憶體'},
         {'value': False, 'name': '否，取消操作', 'desc': '返回主選單'}
     ]
-    
+
     def get_confirm_label(option, index):
         return f"{option['name']} - {option['desc']}"
-    
+
     selected_confirm = interactive_select(
         confirm_options,
         "⚠️  警告：即將完全清除 ESP32 的 flash 記憶體\n⚠️  此操作不可逆轉，所有資料將被刪除\n\n   請確認：",
         default_index=1,  # 預設選擇取消
         get_label=get_confirm_label
     )
-    
+
     if not selected_confirm['value']:
         print("   操作已取消。")
         return False
@@ -384,11 +385,11 @@ def run_flash_tool():
         {'id': '2', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
         {'id': '3', 'name': '完全清除 ESP32 flash 記憶體', 'desc': '清除所有 flash 資料'}
     ]
-    
+
     def get_mode_label(mode, index):
         default_mark = " (預設)" if index == 0 else ""
         return f"{mode['name']} - {mode['desc']}{default_mark}"
-    
+
     selected_mode = interactive_select(
         modes,
         "✅ 請選擇操作模式：",
@@ -399,10 +400,10 @@ def run_flash_tool():
 
     # 選擇序列埠
     port_list = list_serial_ports()
-    
+
     def get_port_label(port_info, index):
         return port_info['full_info']
-    
+
     selected_port_info = interactive_select(
         port_list,
         "✅ 請選擇序列埠：",
@@ -523,8 +524,10 @@ def run_flash_tool():
         print(f"   • 晶片類型: {CHIP_TYPE}")
         print(f"   • 序列埠: {port}")
         print(f"   • 鮑率: {BAUD_RATE}")
-        print(f"   • Bootloader: {firmware_files['bootloader']} @ {BOOTLOADER_ADDRESS}")
-        print(f"   • Partitions: {firmware_files['partitions']} @ {PARTITIONS_ADDRESS}")
+        print(
+            f"   • Bootloader: {firmware_files['bootloader']} @ {BOOTLOADER_ADDRESS}")
+        print(
+            f"   • Partitions: {firmware_files['partitions']} @ {PARTITIONS_ADDRESS}")
         print(f"   • Firmware: {firmware_files['firmware']} @ {APP_ADDRESS}")
 
         print("\n" + "=" * 40)
@@ -549,4 +552,3 @@ if __name__ == '__main__':
         sys.exit(0)
 
     input("\n按 Enter 鍵關閉視窗...")
-
