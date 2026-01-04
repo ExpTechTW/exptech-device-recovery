@@ -17,6 +17,8 @@ VERSION = '1.0.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
 FLASH_FREQ = '80m'
+BOOTLOADER_ADDRESS = '0x1000'
+PARTITIONS_ADDRESS = '0x8000'
 APP_ADDRESS = '0x10000'
 FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 BASE_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main'
@@ -251,21 +253,44 @@ def download_file(url, filepath, description="檔案", min_size=0):
         sys.exit(1)
 
 
-def download_firmware(url, version, model):
-    """下載韌體檔案（支援相對路徑和完整 URL）"""
+def download_firmware_files(base_path, version, model):
+    """下載韌體檔案（bootloader, partitions, main）"""
     if not os.path.exists(FIRMWARE_CACHE_DIR):
         os.makedirs(FIRMWARE_CACHE_DIR)
 
-    # 如果是相對路徑，轉換為完整 URL
-    if not url.startswith(('http://', 'https://')):
-        if not url.startswith('/'):
-            url = f"{BASE_URL}/{url}"
-        else:
-            url = f"{BASE_URL}{url}"
+    # 建立版本目錄
+    version_dir = os.path.join(FIRMWARE_CACHE_DIR, model, version)
+    if not os.path.exists(version_dir):
+        os.makedirs(version_dir)
 
-    filename = f"{model}_{version}.bin"
-    filepath = os.path.join(FIRMWARE_CACHE_DIR, filename)
-    return download_file(url, filepath, "韌體")
+    # 組合基礎 URL
+    if not base_path.startswith(('http://', 'https://')):
+        if not base_path.startswith('/'):
+            base_url = f"{BASE_URL}/{base_path}/{version}"
+        else:
+            base_url = f"{BASE_URL}{base_path}/{version}"
+    else:
+        base_url = f"{base_path}/{version}"
+
+    # 下載三個檔案
+    files = {
+        'bootloader': 'bootloader.bin',
+        'partitions': 'partitions.bin',
+        'firmware': 'firmware.bin'
+    }
+
+    downloaded_files = {}
+    for name, filename in files.items():
+        url = f"{base_url}/{filename}"
+        filepath = os.path.join(version_dir, filename)
+        result = download_file(url, filepath, name)
+        if result:
+            downloaded_files[name] = result
+        else:
+            print(f"❌ 下載 {name} 失敗")
+            return None
+
+    return downloaded_files
 
 
 def get_bin_file_path():
@@ -356,9 +381,8 @@ def run_flash_tool():
     # 選擇操作模式
     modes = [
         {'id': '1', 'name': '使用 firmware.json 中的韌體燒錄', 'desc': '從遠端下載並燒錄韌體'},
-        {'id': '2', 'name': '使用 test.bin 燒錄', 'desc': '燒錄本地的 test.bin 檔案'},
-        {'id': '3', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
-        {'id': '4', 'name': '完全清除 ESP32 flash 記憶體', 'desc': '清除所有 flash 資料'}
+        {'id': '2', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
+        {'id': '3', 'name': '完全清除 ESP32 flash 記憶體', 'desc': '清除所有 flash 資料'}
     ]
     
     def get_mode_label(mode, index):
@@ -388,28 +412,13 @@ def run_flash_tool():
     port = selected_port_info['device']
 
     # 如果選擇清除模式，執行清除並退出
-    if source_choice == '4':
+    if source_choice == '3':
         erase_esp32(port)
         return
 
     bin_path = None
 
     if source_choice == '2':
-        test_bin_path = 'test.bin'
-        if os.path.exists(test_bin_path):
-            print(f"\n✅ 找到 test.bin：{test_bin_path}")
-            bin_path = test_bin_path
-        else:
-            print(f"\n⚠️  未找到 test.bin，請輸入完整路徑。")
-            while True:
-                file_path = input("   請輸入 test.bin 的完整路徑：").strip()
-                if file_path.lower() == 'exit':
-                    sys.exit(0)
-                if file_path and os.path.exists(file_path):
-                    bin_path = file_path
-                    break
-                print("   檔案不存在，請重新輸入。")
-    elif source_choice == '3':
         # 指定本地 bin 檔案
         print("\n📁 請指定本地 bin 檔案：")
         while True:
@@ -434,13 +443,13 @@ def run_flash_tool():
             else:
                 print("   檔案不存在，請重新輸入。")
 
-    # 如果選擇了選項 2 或 3，直接燒錄本地檔案
-    if source_choice == '2' or source_choice == '3':
+    # 如果選擇了選項 2，直接燒錄本地檔案
+    if source_choice == '2':
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
         print(f"   • 序列埠: {port}")
         print(f"   • 檔案路徑: {bin_path}")
-        print(f"   • 燒錄位址: {APP_ADDRESS}")
+        print(f"   • 燒錄位址: 0x0")
         print(f"   • 鮑率: {BAUD_RATE}")
 
         esptool_args = [
@@ -448,8 +457,8 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
-            '--flash_freq', FLASH_FREQ,
-            APP_ADDRESS,
+            '--flash-freq', FLASH_FREQ,
+            '0x0',
             bin_path
         ]
 
@@ -471,7 +480,7 @@ def run_flash_tool():
         firmware_data = load_firmware_json()
 
         selected_product = select_model(firmware_data)
-        
+
         # 選擇更新通道
         channel = select_channel()
 
@@ -480,11 +489,9 @@ def run_flash_tool():
         # 從 product 取得 path，從 version 取得 version 號
         product_path = selected_product.get('path', '')
         version = version_info.get('version', 'unknown')
+        model = selected_product.get('model', 'unknown')
 
-        # 組合 URL：path/version.bin
-        if product_path:
-            url = f"{product_path}/{version}.bin"
-        else:
+        if not product_path:
             print("❌ 錯誤：產品未指定 path")
             sys.exit(1)
 
@@ -492,28 +499,33 @@ def run_flash_tool():
         print(f"\n🔍 版本資訊：")
         print(f"   • 版本號: {version}")
         print(f"   • 類型: {version_info.get('type', 'N/A')}")
-        print(f"   • 路徑: {url}")
+        print(f"   • 路徑: {product_path}/{version}/")
 
-        # 下載應用程式韌體
-        bin_path = download_firmware(
-            url, version, selected_product.get('model', 'unknown'))
+        # 下載韌體檔案（bootloader, partitions, main）
+        firmware_files = download_firmware_files(product_path, version, model)
+        if not firmware_files:
+            print("❌ 下載韌體檔案失敗")
+            sys.exit(1)
 
-        # 準備燒錄參數
+        # 準備燒錄參數（三個檔案）
         esptool_args = [
             '--chip', CHIP_TYPE,
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
-            '--flash_freq', FLASH_FREQ,
-            APP_ADDRESS,
-            bin_path
+            '--flash-freq', FLASH_FREQ,
+            BOOTLOADER_ADDRESS, firmware_files['bootloader'],
+            PARTITIONS_ADDRESS, firmware_files['partitions'],
+            APP_ADDRESS, firmware_files['firmware']
         ]
 
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
         print(f"   • 序列埠: {port}")
         print(f"   • 鮑率: {BAUD_RATE}")
-        print(f"   • 應用程式: {bin_path} @ {APP_ADDRESS}")
+        print(f"   • Bootloader: {firmware_files['bootloader']} @ {BOOTLOADER_ADDRESS}")
+        print(f"   • Partitions: {firmware_files['partitions']} @ {PARTITIONS_ADDRESS}")
+        print(f"   • Firmware: {firmware_files['firmware']} @ {APP_ADDRESS}")
 
         print("\n" + "=" * 40)
         print("⏳ 正在啟動燒錄...")
