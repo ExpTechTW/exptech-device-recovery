@@ -33,6 +33,7 @@ a = Analysis(
         'esptool.targets',
         'esptool.util',
         'readchar',
+        'zstandard',
     ] + esptool_hiddenimports,
     hookspath=[],
     hooksconfig={},

@@ -6,6 +6,7 @@ import ssl
 import urllib.request
 import urllib.error
 import certifi
+import zstandard as zstd
 import serial.tools.list_ports
 from esptool import main as esptool_main
 import readchar
@@ -13,7 +14,7 @@ import readchar
 # Setup SSL context with certifi certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
 FLASH_FREQ = '80m'
@@ -254,8 +255,19 @@ def download_file(url, filepath, description="檔案", min_size=0):
         sys.exit(1)
 
 
+def decompress_zstd(zst_path, output_path):
+    """解壓縮 zstd 檔案"""
+    dctx = zstd.ZstdDecompressor()
+    with open(zst_path, 'rb') as f_in:
+        compressed = f_in.read()
+    decompressed = dctx.decompress(compressed)
+    with open(output_path, 'wb') as f_out:
+        f_out.write(decompressed)
+    return len(compressed), len(decompressed)
+
+
 def download_firmware_files(base_path, version, model):
-    """下載韌體檔案（bootloader, partitions, main）"""
+    """下載韌體檔案（.zst 壓縮格式）並解壓縮"""
     if not os.path.exists(FIRMWARE_CACHE_DIR):
         os.makedirs(FIRMWARE_CACHE_DIR)
 
@@ -273,7 +285,7 @@ def download_firmware_files(base_path, version, model):
     else:
         base_url = f"{base_path}/{version}"
 
-    # 下載三個檔案
+    # 下載三個檔案（zst 壓縮格式）
     files = {
         'bootloader': 'bootloader.bin',
         'partitions': 'partitions.bin',
@@ -282,13 +294,37 @@ def download_firmware_files(base_path, version, model):
 
     downloaded_files = {}
     for name, filename in files.items():
-        url = f"{base_url}/{filename}"
-        filepath = os.path.join(version_dir, filename)
-        result = download_file(url, filepath, name)
-        if result:
-            downloaded_files[name] = result
-        else:
+        zst_filename = filename + '.zst'
+        url = f"{base_url}/{zst_filename}"
+        zst_filepath = os.path.join(version_dir, zst_filename)
+        bin_filepath = os.path.join(version_dir, filename)
+
+        # 如果已解壓縮的 bin 存在且有效，跳過下載
+        if os.path.exists(bin_filepath) and os.path.getsize(bin_filepath) > 0:
+            print(f"\n📁 發現已下載的 {name}：{bin_filepath}")
+            overwrite = input("   是否重新下載？（y/N）：").strip().lower()
+            if overwrite != 'y':
+                print(f"   使用現有檔案：{bin_filepath}")
+                downloaded_files[name] = bin_filepath
+                continue
+
+        # 下載 zst 檔案
+        result = download_file(url, zst_filepath, f"{name} (zst)")
+        if not result:
             print(f"❌ 下載 {name} 失敗")
+            return None
+
+        # 解壓縮
+        print(f"   🗜️  解壓縮 {zst_filename}...")
+        try:
+            compressed_size, decompressed_size = decompress_zstd(zst_filepath, bin_filepath)
+            ratio = (1 - compressed_size / decompressed_size) * 100 if decompressed_size > 0 else 0
+            print(f"   ✅ 解壓縮完成：{compressed_size:,} → {decompressed_size:,} bytes ({ratio:.1f}% 壓縮率)")
+            # 刪除 zst 檔案
+            os.remove(zst_filepath)
+            downloaded_files[name] = bin_filepath
+        except Exception as e:
+            print(f"   ❌ 解壓縮失敗：{e}")
             return None
 
     return downloaded_files
@@ -458,13 +494,14 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
+            '-z',  # 壓縮傳輸
             '--flash-freq', FLASH_FREQ,
             '0x0',
             bin_path
         ]
 
         print("\n" + "=" * 40)
-        print("⏳ 正在啟動燒錄...")
+        print("⏳ 正在啟動燒錄（壓縮傳輸）...")
         print("   （請依提示操作，例如按住 BOOT 鍵）")
         print("=" * 40)
 
@@ -514,6 +551,7 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
+            '-z',  # 壓縮傳輸
             '--flash-freq', FLASH_FREQ,
             BOOTLOADER_ADDRESS, firmware_files['bootloader'],
             PARTITIONS_ADDRESS, firmware_files['partitions'],
@@ -531,7 +569,7 @@ def run_flash_tool():
         print(f"   • Firmware: {firmware_files['firmware']} @ {APP_ADDRESS}")
 
         print("\n" + "=" * 40)
-        print("⏳ 正在啟動燒錄...")
+        print("⏳ 正在啟動燒錄（壓縮傳輸）...")
         print("   （請依提示操作，例如按住 BOOT 鍵）")
         print("=" * 40)
 
