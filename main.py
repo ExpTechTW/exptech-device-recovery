@@ -11,7 +11,6 @@ import serial.tools.list_ports
 from esptool import main as esptool_main
 import readchar
 
-# Setup SSL context with certifi certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 VERSION = '1.3.0'
@@ -28,7 +27,6 @@ FIRMWARE_CACHE_DIR = 'firmware_cache'
 
 
 def list_serial_ports():
-    """列出所有可用的序列埠"""
     ports = serial.tools.list_ports.comports()
     if not ports:
         print("❌ 未偵測到任何序列埠裝置。請檢查 USB 連接與驅動程式。")
@@ -47,7 +45,6 @@ def list_serial_ports():
 
 
 def load_firmware_json():
-    """從遠端 URL 讀取 firmware.json"""
     try:
         print(f"\n⬇️  正在從遠端載入 firmware.json...")
         print(f"   URL: {FIRMWARE_JSON_URL}")
@@ -69,12 +66,11 @@ def load_firmware_json():
 
 
 def interactive_select(items, title, default_index=None, get_label=None):
-    """互動式選擇（支持上下鍵）"""
     if not items:
         return None
 
     if default_index is None:
-        default_index = len(items) - 1  # 預設選擇最後一個
+        default_index = len(items) - 1
 
     current_index = default_index
 
@@ -88,33 +84,29 @@ def interactive_select(items, title, default_index=None, get_label=None):
             label = get_label(item, i) if get_label else str(item)
             if i == current_index:
                 marker = "→ "
-                # 使用反白顯示當前選項
                 print(f"{marker}\033[7m[{i + 1}] {label}\033[0m")
             else:
                 marker = "  "
                 print(f"{marker}[{i + 1}] {label}")
 
     while True:
-        # 清除並重新顯示
-        sys.stdout.write('\033[2J\033[H')  # 清屏並移動到頂部
+        sys.stdout.write('\033[2J\033[H')
         display()
 
         key = readchar.readkey()
 
-        # readchar 會自動處理箭頭鍵
-        if key == readchar.key.UP:  # 上箭頭
+        if key == readchar.key.UP:
             current_index = max(0, current_index - 1)
-        elif key == readchar.key.DOWN:  # 下箭頭
+        elif key == readchar.key.DOWN:
             current_index = min(len(items) - 1, current_index + 1)
-        elif key == readchar.key.ENTER or key == '\r' or key == '\n':  # Enter
-            sys.stdout.write('\033[2J\033[H')  # 清屏
+        elif key == readchar.key.ENTER or key == '\r' or key == '\n':
+            sys.stdout.write('\033[2J\033[H')
             return items[current_index]
         elif key == 'q' or key == 'Q':
             sys.exit(0)
 
 
 def select_model(firmware_data):
-    """選擇型號（model）"""
     products = firmware_data.get('product', [])
 
     available_products = [p for p in products if p.get(
@@ -139,7 +131,6 @@ def select_model(firmware_data):
 
 
 def select_channel():
-    """選擇更新通道"""
     channels = [
         {'name': 'Release', 'desc': '僅顯示正式版本'},
         {'name': 'All', 'desc': 'Pre-Release + Release（顯示所有版本）'}
@@ -160,18 +151,15 @@ def select_channel():
 
 
 def parse_version(version_str):
-    """解析版本號，返回 (年份, 週數, 字母) 用於排序"""
-    # 格式：25w47a -> (25, 47, 'a')
     try:
         if 'w' in version_str.lower():
             parts = version_str.lower().split('w')
             year = int(parts[0])
             week_part = parts[1]
-            # 提取週數和字母
             week = int(''.join(filter(str.isdigit, week_part)))
             letter = ''.join(filter(str.isalpha, week_part))
             if not letter:
-                letter = 'a'  # 預設字母為 'a'
+                letter = 'a'
             return (year, week, letter)
         return (0, 0, 'a')
     except:
@@ -179,14 +167,12 @@ def parse_version(version_str):
 
 
 def select_version(product, channel='All'):
-    """選擇版本並返回版本資訊（預設選擇最新版本）"""
     all_versions = product.get('versions', [])
 
     if not all_versions:
         print("❌ 此型號沒有可用版本。")
         sys.exit(1)
 
-    # 根據通道過濾版本
     if channel == 'Release':
         versions = [v for v in all_versions if v.get('type', '') == 'Release']
         if not versions:
@@ -195,8 +181,6 @@ def select_version(product, channel='All'):
     else:
         versions = all_versions
 
-    # 按照版本號排序：年份 -> 週數 -> 字母
-    # 例如：25w47a < 25w48a < 25w48b < 25w50a
     versions = sorted(
         versions, key=lambda v: parse_version(v.get('version', '')))
 
@@ -204,7 +188,6 @@ def select_version(product, channel='All'):
         ver = version.get('version', '未知')
         ver_type = version.get('type', '')
         type_mark = f" [{ver_type}]" if ver_type else ""
-        # 最後一個（最新的）標記為預設
         default_mark = " (最新，預設)" if index == len(versions) - 1 else ""
         return f"{ver}{type_mark}{default_mark}"
 
@@ -213,13 +196,12 @@ def select_version(product, channel='All'):
     return interactive_select(
         versions,
         title,
-        default_index=len(versions) - 1,  # 預設選擇最後一個（最新的）
+        default_index=len(versions) - 1,
         get_label=get_version_label
     )
 
 
 def download_file(url, filepath, description="檔案", min_size=0):
-    """下載檔案並驗證檔案大小"""
     if os.path.exists(filepath):
         file_size = os.path.getsize(filepath)
         if file_size > min_size:
@@ -257,7 +239,6 @@ def download_file(url, filepath, description="檔案", min_size=0):
 
 
 def decompress_zstd(zst_path, output_path):
-    """解壓縮 zstd 檔案"""
     dctx = zstd.ZstdDecompressor()
     with open(zst_path, 'rb') as f_in:
         compressed = f_in.read()
@@ -268,16 +249,13 @@ def decompress_zstd(zst_path, output_path):
 
 
 def download_firmware_files(base_path, version, model):
-    """下載韌體檔案（.zst 壓縮格式）並解壓縮"""
     if not os.path.exists(FIRMWARE_CACHE_DIR):
         os.makedirs(FIRMWARE_CACHE_DIR)
 
-    # 建立版本目錄
     version_dir = os.path.join(FIRMWARE_CACHE_DIR, model, version)
     if not os.path.exists(version_dir):
         os.makedirs(version_dir)
 
-    # 組合基礎 URL
     if not base_path.startswith(('http://', 'https://')):
         if not base_path.startswith('/'):
             base_url = f"{BASE_URL}/{base_path}/{version}"
@@ -286,7 +264,6 @@ def download_firmware_files(base_path, version, model):
     else:
         base_url = f"{base_path}/{version}"
 
-    # 下載三個檔案（zst 壓縮格式）
     files = {
         'bootloader': 'bootloader.bin',
         'partitions': 'partitions.bin',
@@ -300,7 +277,6 @@ def download_firmware_files(base_path, version, model):
         zst_filepath = os.path.join(version_dir, zst_filename)
         bin_filepath = os.path.join(version_dir, filename)
 
-        # 如果已解壓縮的 bin 存在且有效，跳過下載
         if os.path.exists(bin_filepath) and os.path.getsize(bin_filepath) > 0:
             print(f"\n📁 發現已下載的 {name}：{bin_filepath}")
             overwrite = input("   是否重新下載？（y/N）：").strip().lower()
@@ -309,13 +285,11 @@ def download_firmware_files(base_path, version, model):
                 downloaded_files[name] = bin_filepath
                 continue
 
-        # 下載 zst 檔案
         result = download_file(url, zst_filepath, f"{name} (zst)")
         if not result:
             print(f"❌ 下載 {name} 失敗")
             return None
 
-        # 解壓縮
         print(f"   🗜️  解壓縮 {zst_filename}...")
         try:
             compressed_size, decompressed_size = decompress_zstd(
@@ -324,7 +298,6 @@ def download_firmware_files(base_path, version, model):
                 100 if decompressed_size > 0 else 0
             print(
                 f"   ✅ 解壓縮完成：{compressed_size:,} → {decompressed_size:,} bytes ({ratio:.1f}% 壓縮率)")
-            # 刪除 zst 檔案
             os.remove(zst_filepath)
             downloaded_files[name] = bin_filepath
         except Exception as e:
@@ -335,7 +308,6 @@ def download_firmware_files(base_path, version, model):
 
 
 def get_bin_file_path():
-    """取得 .bin 檔案路徑"""
     print("\n🔍 正在搜尋目前目錄下的 .bin 檔案...")
     bin_files = glob.glob('**/*.bin', recursive=True)
 
@@ -363,13 +335,11 @@ def get_bin_file_path():
 
 
 def erase_esp32(port):
-    """完全清除 ESP32 flash 記憶體"""
     print("\n" + "=" * 40)
     print("⚠️  警告：即將完全清除 ESP32 的 flash 記憶體")
     print("⚠️  此操作不可逆轉，所有資料將被刪除")
     print("=" * 40)
 
-    # 確認清除操作
     confirm_options = [
         {'value': True, 'name': '是，確認清除', 'desc': '將完全清除 ESP32 flash 記憶體'},
         {'value': False, 'name': '否，取消操作', 'desc': '返回主選單'}
@@ -381,7 +351,7 @@ def erase_esp32(port):
     selected_confirm = interactive_select(
         confirm_options,
         "⚠️  警告：即將完全清除 ESP32 的 flash 記憶體\n⚠️  此操作不可逆轉，所有資料將被刪除\n\n   請確認：",
-        default_index=1,  # 預設選擇取消
+        default_index=1,
         get_label=get_confirm_label
     )
 
@@ -417,9 +387,7 @@ def erase_esp32(port):
 
 
 def run_flash_tool():
-    """主程式：執行燒錄作業"""
 
-    # 選擇操作模式
     modes = [
         {'id': '1', 'name': '使用 firmware.json 中的韌體燒錄', 'desc': '從遠端下載並燒錄韌體'},
         {'id': '2', 'name': '指定本地 bin 檔案', 'desc': '選擇任意本地 bin 檔案進行燒錄'},
@@ -438,7 +406,6 @@ def run_flash_tool():
     )
     source_choice = selected_mode['id']
 
-    # 選擇序列埠
     port_list = list_serial_ports()
 
     def get_port_label(port_info, index):
@@ -452,7 +419,6 @@ def run_flash_tool():
     )
     port = selected_port_info['device']
 
-    # 如果選擇清除模式，執行清除並退出
     if source_choice == '3':
         erase_esp32(port)
         return
@@ -460,7 +426,6 @@ def run_flash_tool():
     bin_path = None
 
     if source_choice == '2':
-        # 指定本地 bin 檔案
         print("\n📁 請指定本地 bin 檔案：")
         while True:
             file_path = input("   請輸入 bin 檔案的完整路徑（或相對路徑）：").strip()
@@ -470,7 +435,6 @@ def run_flash_tool():
                 print("   路徑不能為空。")
                 continue
 
-            # 處理相對路徑
             if not os.path.isabs(file_path):
                 file_path = os.path.abspath(file_path)
 
@@ -484,7 +448,6 @@ def run_flash_tool():
             else:
                 print("   檔案不存在，請重新輸入。")
 
-    # 如果選擇了選項 2，直接燒錄本地檔案
     if source_choice == '2':
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
@@ -498,7 +461,7 @@ def run_flash_tool():
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
-            '-z',  # 壓縮傳輸
+            '-z',
             '--flash-freq', FLASH_FREQ,
             '0x0',
             bin_path
@@ -517,18 +480,15 @@ def run_flash_tool():
             print("   請檢查：序列埠設定、ESP32 燒錄模式（BOOT 鍵）、檔案路徑。")
         return
 
-    # 選項 1：使用 firmware.json 中的韌體燒錄
     if source_choice == '1':
         firmware_data = load_firmware_json()
 
         selected_product = select_model(firmware_data)
 
-        # 選擇更新通道
         channel = select_channel()
 
         version_info = select_version(selected_product, channel)
 
-        # 從 product 取得 path，從 version 取得 version 號
         product_path = selected_product.get('path', '')
         version = version_info.get('version', 'unknown')
         model = selected_product.get('model', 'unknown')
@@ -537,19 +497,16 @@ def run_flash_tool():
             print("❌ 錯誤：產品未指定 path")
             sys.exit(1)
 
-        # 顯示版本資訊
         print(f"\n🔍 版本資訊：")
         print(f"   • 版本號: {version}")
         print(f"   • 類型: {version_info.get('type', 'N/A')}")
         print(f"   • 路徑: {product_path}/{version}/")
 
-        # 下載韌體檔案（bootloader, partitions, main）
         firmware_files = download_firmware_files(product_path, version, model)
         if not firmware_files:
             print("❌ 下載韌體檔案失敗")
             sys.exit(1)
 
-        # 下載 boot_app0.bin（從 GitHub）
         boot_app0_url = f"{BASE_URL}/resources/boot_app0.bin"
         boot_app0_dir = os.path.join(FIRMWARE_CACHE_DIR, 'resources')
         if not os.path.exists(boot_app0_dir):
@@ -562,13 +519,13 @@ def run_flash_tool():
                 print("❌ 下載 boot_app0.bin 失敗")
                 sys.exit(1)
 
-        # 準備燒錄參數（四個檔案）
         esptool_args = [
             '--chip', CHIP_TYPE,
             '--port', port,
             '--baud', str(BAUD_RATE),
             'write-flash',
             '-z',  # 壓縮傳輸
+            '--flash-mode', FLASH_MODE,
             '--flash-freq', FLASH_FREQ,
             BOOTLOADER_ADDRESS, firmware_files['bootloader'],
             PARTITIONS_ADDRESS, firmware_files['partitions'],
