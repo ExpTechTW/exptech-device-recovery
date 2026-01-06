@@ -26,6 +26,10 @@
         {
           "version": "26w01g",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w01h",
+          "type": "Pre-Release"
         }
       ]
     }
