@@ -567,9 +567,9 @@ def run_flash_tool():
             '--chip', CHIP_TYPE,
             '--port', port,
             '--baud', str(BAUD_RATE),
-            'write_flash',
+            'write-flash',
             '-z',  # 壓縮傳輸
-            '--flash_freq', FLASH_FREQ,
+            '--flash-freq', FLASH_FREQ,
             BOOTLOADER_ADDRESS, firmware_files['bootloader'],
             PARTITIONS_ADDRESS, firmware_files['partitions'],
             BOOT_APP0_ADDRESS, boot_app0_path,
