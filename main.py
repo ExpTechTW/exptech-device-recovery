@@ -16,6 +16,7 @@ ssl_context = ssl.create_default_context(cafile=certifi.where())
 VERSION = '1.3.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
+FLASH_MODE = 'qout'
 FLASH_FREQ = '80m'
 BOOTLOADER_ADDRESS = '0x1000'
 PARTITIONS_ADDRESS = '0x8000'
