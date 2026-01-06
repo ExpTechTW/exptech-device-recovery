@@ -14,12 +14,13 @@ import readchar
 # Setup SSL context with certifi certificates
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-VERSION = '1.2.0'
+VERSION = '1.3.0'
 CHIP_TYPE = 'esp32'
 BAUD_RATE = 921600
 FLASH_FREQ = '80m'
 BOOTLOADER_ADDRESS = '0x1000'
 PARTITIONS_ADDRESS = '0x8000'
+BOOT_APP0_ADDRESS = '0xe000'
 APP_ADDRESS = '0x10000'
 FIRMWARE_JSON_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main/firmware.json'
 BASE_URL = 'https://raw.githubusercontent.com/ExpTechTW/exptech-device-recovery/refs/heads/main'
@@ -317,9 +318,12 @@ def download_firmware_files(base_path, version, model):
         # 解壓縮
         print(f"   🗜️  解壓縮 {zst_filename}...")
         try:
-            compressed_size, decompressed_size = decompress_zstd(zst_filepath, bin_filepath)
-            ratio = (1 - compressed_size / decompressed_size) * 100 if decompressed_size > 0 else 0
-            print(f"   ✅ 解壓縮完成：{compressed_size:,} → {decompressed_size:,} bytes ({ratio:.1f}% 壓縮率)")
+            compressed_size, decompressed_size = decompress_zstd(
+                zst_filepath, bin_filepath)
+            ratio = (1 - compressed_size / decompressed_size) * \
+                100 if decompressed_size > 0 else 0
+            print(
+                f"   ✅ 解壓縮完成：{compressed_size:,} → {decompressed_size:,} bytes ({ratio:.1f}% 壓縮率)")
             # 刪除 zst 檔案
             os.remove(zst_filepath)
             downloaded_files[name] = bin_filepath
@@ -545,16 +549,30 @@ def run_flash_tool():
             print("❌ 下載韌體檔案失敗")
             sys.exit(1)
 
-        # 準備燒錄參數（三個檔案）
+        # 下載 boot_app0.bin（從 GitHub）
+        boot_app0_url = f"{BASE_URL}/resources/boot_app0.bin"
+        boot_app0_dir = os.path.join(FIRMWARE_CACHE_DIR, 'resources')
+        if not os.path.exists(boot_app0_dir):
+            os.makedirs(boot_app0_dir)
+        boot_app0_path = os.path.join(boot_app0_dir, 'boot_app0.bin')
+
+        if not os.path.exists(boot_app0_path) or os.path.getsize(boot_app0_path) == 0:
+            result = download_file(boot_app0_url, boot_app0_path, "boot_app0")
+            if not result:
+                print("❌ 下載 boot_app0.bin 失敗")
+                sys.exit(1)
+
+        # 準備燒錄參數（四個檔案）
         esptool_args = [
             '--chip', CHIP_TYPE,
             '--port', port,
             '--baud', str(BAUD_RATE),
-            'write-flash',
+            'write_flash',
             '-z',  # 壓縮傳輸
-            '--flash-freq', FLASH_FREQ,
+            '--flash_freq', FLASH_FREQ,
             BOOTLOADER_ADDRESS, firmware_files['bootloader'],
             PARTITIONS_ADDRESS, firmware_files['partitions'],
+            BOOT_APP0_ADDRESS, boot_app0_path,
             APP_ADDRESS, firmware_files['firmware']
         ]
 
@@ -566,6 +584,7 @@ def run_flash_tool():
             f"   • Bootloader: {firmware_files['bootloader']} @ {BOOTLOADER_ADDRESS}")
         print(
             f"   • Partitions: {firmware_files['partitions']} @ {PARTITIONS_ADDRESS}")
+        print(f"   • Boot App0: {boot_app0_path} @ {BOOT_APP0_ADDRESS}")
         print(f"   • Firmware: {firmware_files['firmware']} @ {APP_ADDRESS}")
 
         print("\n" + "=" * 40)
