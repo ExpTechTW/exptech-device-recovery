@@ -16,7 +16,7 @@
     {
       "model": "es-pro",
       "name": "ES-Pro",
-      "update": "2026-01-06",
+      "update": "2026-01-17",
       "path": "firmware/es/es-pro",
       "versions": [
         {
@@ -29,6 +29,10 @@
         },
         {
           "version": "26w02a",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w03a",
           "type": "Pre-Release"
         }
       ]
