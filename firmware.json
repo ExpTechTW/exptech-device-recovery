@@ -4,8 +4,9 @@
     {
       "model": "es-net",
       "name": "ES-net",
-      "update": "2026-02-03",
+      "update": "2026-02-16",
       "path": "firmware/es/es-net",
+      "ota": "26w08a",
       "versions": [
         {
           "version": "26w01f",
@@ -14,14 +15,19 @@
         {
           "version": "26w06a",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w08a",
+          "type": "Pre-Release"
         }
       ]
     },
     {
       "model": "es-pro",
       "name": "ES-Pro",
-      "update": "2026-02-03",
+      "update": "2026-02-16",
       "path": "firmware/es/es-pro",
+      "ota": "26w08a",
       "versions": [
         {
           "version": "26w01f",
@@ -41,6 +47,10 @@
         },
         {
           "version": "26w06a",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w08a",
           "type": "Pre-Release"
         }
       ]
