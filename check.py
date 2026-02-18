@@ -8,6 +8,7 @@ Firmware 檢查與壓縮工具
 import os
 import sys
 import glob
+import json
 
 try:
     import zstandard as zstd
@@ -16,6 +17,7 @@ except ImportError:
     sys.exit(1)
 
 FIRMWARE_DIR = 'firmware'
+FIRMWARE_JSON = 'firmware.json'
 COMPRESSION_LEVEL = 22
 
 # firmware.bin 檢查規則
@@ -75,7 +77,55 @@ def get_model_from_path(bin_path):
     return None
 
 
+def check_consistency():
+    """檢查 firmware.json 與實際資料夾/firmware.bin 的一致性"""
+    with open(FIRMWARE_JSON, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    errors = []
+
+    # 從 firmware.json 收集所有已登錄的版本路徑
+    json_entries = set()
+    for product in data.get('product', []):
+        path = product['path']
+        for ver in product.get('versions', []):
+            version_path = os.path.join(path, ver['version'])
+            json_entries.add(version_path)
+
+    # 檢查 firmware.json 有記錄，但資料夾或 firmware.bin 不存在
+    for entry in sorted(json_entries):
+        firmware_bin = os.path.join(entry, 'firmware.bin')
+        if not os.path.isdir(entry):
+            errors.append(f"firmware.json 有記錄但資料夾不存在: {entry}")
+        elif not os.path.isfile(firmware_bin):
+            errors.append(f"firmware.json 有記錄但 firmware.bin 不存在: {firmware_bin}")
+
+    # 掃描實際存在的資料夾 + firmware.bin，檢查是否在 firmware.json 中有記錄
+    for product in data.get('product', []):
+        path = product['path']
+        if not os.path.isdir(path):
+            continue
+        for version_dir in sorted(os.listdir(path)):
+            version_path = os.path.join(path, version_dir)
+            if not os.path.isdir(version_path):
+                continue
+            firmware_bin = os.path.join(version_path, 'firmware.bin')
+            if os.path.isfile(firmware_bin) and version_path not in json_entries:
+                errors.append(f"資料夾存在但 firmware.json 未記錄: {version_path}")
+
+    return errors
+
+
 def main():
+    # 一致性檢查
+    consistency_errors = check_consistency()
+    if consistency_errors:
+        print("Consistency errors:")
+        for e in consistency_errors:
+            print(f"  ERROR  {e}")
+        print()
+        sys.exit(1)
+
     bin_files = glob.glob(f'{FIRMWARE_DIR}/**/*.bin', recursive=True)
 
     if not bin_files:
