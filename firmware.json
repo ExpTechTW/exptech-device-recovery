@@ -40,7 +40,7 @@
     {
       "model": "es-pro",
       "name": "ES-Pro",
-      "update": "2026-02-18",
+      "update": "2026-02-20",
       "path": "firmware/es/es-pro",
       "versions": [
         {
@@ -81,6 +81,10 @@
         },
         {
           "version": "26w08g",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w08i",
           "type": "Pre-Release"
         }
       ]
