@@ -427,6 +427,24 @@ def run_flash_tool():
     bin_path = None
 
     if source_choice == '2':
+        regions = [
+            {'name': 'Firmware', 'address': APP_ADDRESS, 'desc': '僅燒錄應用程式韌體'},
+            {'name': 'Partitions', 'address': PARTITIONS_ADDRESS, 'desc': '僅燒錄分區表'},
+            {'name': 'Bootloader', 'address': BOOTLOADER_ADDRESS, 'desc': '僅燒錄引導程式'},
+        ]
+
+        def get_region_label(region, index):
+            default_mark = " (預設)" if index == 0 else ""
+            return f"{region['name']} ({region['address']}) - {region['desc']}{default_mark}"
+
+        selected_region = interactive_select(
+            regions,
+            "✅ 請選擇燒錄區域：",
+            default_index=0,
+            get_label=get_region_label
+        )
+        flash_address = selected_region['address']
+
         print("\n📁 請指定本地 bin 檔案：")
         while True:
             file_path = input("   請輸入 bin 檔案的完整路徑（或相對路徑）：").strip()
@@ -449,12 +467,12 @@ def run_flash_tool():
             else:
                 print("   檔案不存在，請重新輸入。")
 
-    if source_choice == '2':
         print(f"\n⚙️  設定資訊：")
         print(f"   • 晶片類型: {CHIP_TYPE}")
         print(f"   • 序列埠: {port}")
+        print(f"   • 燒錄區域: {selected_region['name']}")
         print(f"   • 檔案路徑: {bin_path}")
-        print(f"   • 燒錄位址: 0x0")
+        print(f"   • 燒錄位址: {flash_address}")
         print(f"   • 鮑率: {BAUD_RATE}")
 
         esptool_args = [
@@ -464,7 +482,7 @@ def run_flash_tool():
             'write-flash',
             '-z',
             '--flash-freq', FLASH_FREQ,
-            '0x0',
+            flash_address,
             bin_path
         ]
 
