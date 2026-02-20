@@ -38,6 +38,10 @@
         {
           "version": "26w08j",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w08k",
+          "type": "Pre-Release"
         }
       ]
     },
@@ -89,6 +93,10 @@
         },
         {
           "version": "26w08j",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w08k",
           "type": "Pre-Release"
         }
       ]
