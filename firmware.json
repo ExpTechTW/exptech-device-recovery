@@ -4,7 +4,7 @@
     {
       "model": "es-net",
       "name": "ES-net",
-      "update": "2026-02-21",
+      "update": "2026-02-23",
       "path": "firmware/es/es-net",
       "versions": [
         {
@@ -46,13 +46,17 @@
         {
           "version": "26w08l",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w09a",
+          "type": "Pre-Release"
         }
       ]
     },
     {
       "model": "es-pro",
       "name": "ES-Pro",
-      "update": "2026-02-21",
+      "update": "2026-02-23",
       "path": "firmware/es/es-pro",
       "versions": [
         {
@@ -105,6 +109,10 @@
         },
         {
           "version": "26w08l",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w09a",
           "type": "Pre-Release"
         }
       ]

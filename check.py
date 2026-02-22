@@ -33,14 +33,27 @@ RULES = {
 }
 
 
+def get_version_from_path(bin_path):
+    """從路徑提取版本號 (資料夾名)，如 firmware/es/es-pro/26w09a/firmware.bin -> 26w09a"""
+    parts = bin_path.replace('\\', '/').split('/')
+    # firmware.bin 的上一層資料夾即為版本號
+    idx = len(parts) - 2
+    return parts[idx] if idx >= 0 else None
+
+
 def check_firmware(firmware_path, model):
-    """檢查 firmware.bin 內容是否符合型號規則"""
+    """檢查 firmware.bin 內容是否符合型號規則與版本號"""
     rule = RULES.get(model)
     if rule is None:
         return True, []
 
     with open(firmware_path, 'rb') as f:
         data = f.read()
+
+    # 跳過 ESP-IDF app header (esp_app_desc_t)
+    # 前 0x20 是 image header，接著 256 bytes 是 app_desc（含 project name = 資料夾名）
+    # 資料夾名 "ES-Net" 會被嵌入 header，導致誤判，所以只檢查 0x120 之後的內容
+    data = data[0x120:]
 
     errors = []
     for pattern in rule['must_contain']:
@@ -49,6 +62,11 @@ def check_firmware(firmware_path, model):
     for pattern in rule['must_not_contain']:
         if pattern in data:
             errors.append(f"should not contain '{pattern.decode()}'")
+
+    # 驗證版本號是否存在於 firmware 內容中
+    version = get_version_from_path(firmware_path)
+    if version and version.encode() not in data:
+        errors.append(f"version mismatch: '{version}' not found in firmware")
 
     return len(errors) == 0, errors
 
