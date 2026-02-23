@@ -54,6 +54,10 @@
         {
           "version": "26w09b",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w09c",
+          "type": "Pre-Release"
         }
       ]
     },
@@ -121,6 +125,10 @@
         },
         {
           "version": "26w09b",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w09c",
           "type": "Pre-Release"
         }
       ]
