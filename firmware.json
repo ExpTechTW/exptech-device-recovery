@@ -66,6 +66,10 @@
         {
           "version": "26w15a",
           "type": "Release"
+        },
+        {
+          "version": "26w17a",
+          "type": "Pre-Release"
         }
       ]
     },
@@ -146,6 +150,10 @@
         {
           "version": "26w15a",
           "type": "Release"
+        },
+        {
+          "version": "26w17a",
+          "type": "Pre-Release"
         }
       ]
     }
