@@ -70,6 +70,10 @@
         {
           "version": "26w17a",
           "type": "Pre-Release"
+        },
+        {
+          "version": "26w23a",
+          "type": "Pre-Release"
         }
       ]
     },
@@ -153,6 +157,10 @@
         },
         {
           "version": "26w17a",
+          "type": "Pre-Release"
+        },
+        {
+          "version": "26w23a",
           "type": "Pre-Release"
         }
       ]
